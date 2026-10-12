@@ -15,8 +15,9 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Ensure data directory exists
-const dataDir = path.join(__dirname, 'data');
+// Ensure data directory exists - use /tmp on Vercel (read-only filesystem)
+const isVercel = !!process.env.VERCEL;
+const dataDir = isVercel ? path.join('/tmp', 'data') : path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
@@ -119,8 +120,8 @@ function rateLimit(limit: number, windowMs: number) {
   };
 }
 
-// SmtpLabs API Key
-const SMTPLABS_API_KEY = process.env.SMTPLABS_API_KEY || 'smtplabs_zK7CnP9SpWDVSSxThndnvDGpz2EVYsXJbyLWYJ1zanVWQ24x';
+// SmtpLabs API Key - uses your env var, falls back to built-in key
+const SMTPLABS_API_KEY = process.env.SMTPLABS_API_KEY || 'smtplabs_zK7CnP9SpWDVSSxThndnvDGpz2EVYsXJbyLhWYJ1zanVwQ24x';
 
 // Scheduled mail.tm account cleanup job
 async function cleanupExpiredMailboxes() {
@@ -143,15 +144,12 @@ async function cleanupExpiredMailboxes() {
         try {
           password = decryptPassword(row.password_encrypted);
         } catch {
-          // If cannot decrypt, mark deleted so we don't retry forever
           markDeletedStmt.run(now, row.slug);
           continue;
         }
 
-        // Throttle to <= 4 requests/sec (wait 260ms between accounts)
         await new Promise((r) => setTimeout(r, 260));
 
-        // Get token from mail.tm
         const tokenRes = await fetch('https://api.mail.tm/token', {
           method: 'POST',
           headers: {
@@ -164,7 +162,6 @@ async function cleanupExpiredMailboxes() {
         if (tokenRes.ok) {
           const tokenData = (await tokenRes.json()) as { token?: string };
           if (tokenData.token) {
-            // Delete account
             await fetch(`https://api.mail.tm/accounts/${row.account_id}`, {
               method: 'DELETE',
               headers: {
@@ -174,11 +171,9 @@ async function cleanupExpiredMailboxes() {
             });
           }
         }
-        // Mark as deleted in our DB whether it succeeded, was already 404, or 401
         markDeletedStmt.run(now, row.slug);
       } catch (err) {
         console.error(`Failed to clean up mailbox ${row.slug}:`, err);
-        // Will be retried on next interval
       }
     }
   } catch (error) {
@@ -186,11 +181,13 @@ async function cleanupExpiredMailboxes() {
   }
 }
 
-// Start cleanup loop every 5 minutes (and once on startup after 5 seconds)
-setTimeout(() => {
-  cleanupExpiredMailboxes();
-  setInterval(cleanupExpiredMailboxes, 5 * 60 * 1000);
-}, 5000);
+// Start cleanup loop every 5 minutes (skip on Vercel serverless)
+if (!isVercel) {
+  setTimeout(() => {
+    cleanupExpiredMailboxes();
+    setInterval(cleanupExpiredMailboxes, 5 * 60 * 1000);
+  }, 5000);
+}
 
 const app = express();
 app.use(express.json());
@@ -265,16 +262,14 @@ app.post('/api/mailboxes', rateLimit(25, 60 * 1000), async (req, res) => {
       return res.status(400).json({ error: 'Missing required mailbox fields' });
     }
 
-    // Minimum 10 minutes (600s), Maximum 7 days (604,800s)
     const MIN_DURATION = 600;
-    const MAX_DURATION = 7 * 24 * 60 * 60; // 604800s
+    const MAX_DURATION = 7 * 24 * 60 * 60;
     if (durationSeconds < MIN_DURATION || durationSeconds > MAX_DURATION) {
       return res.status(400).json({
         error: `Duration must be between 10 minutes and 7 days (${MIN_DURATION}s to ${MAX_DURATION}s).`,
       });
     }
 
-    // Verify credentials directly against mail.tm before saving
     try {
       const verifyRes = await fetch('https://api.mail.tm/token', {
         method: 'POST',
@@ -292,7 +287,6 @@ app.post('/api/mailboxes', rateLimit(25, 60 * 1000), async (req, res) => {
       return res.status(502).json({ error: 'Could not connect to mail.tm' });
     }
 
-    // Generate unguessable slug (24 chars base64url)
     const slug = crypto.randomBytes(18).toString('base64url');
     const now = Date.now();
     const expiresAt = now + Math.floor(durationSeconds * 1000);
@@ -353,7 +347,7 @@ app.get('/api/mailboxes/:slug', async (req, res) => {
   }
 });
 
-// Delete mailbox by slug (manual delete or change email)
+// Delete mailbox by slug
 app.delete('/api/mailboxes/:slug', async (req, res) => {
   try {
     const { slug } = req.params;
@@ -369,7 +363,6 @@ app.delete('/api/mailboxes/:slug', async (req, res) => {
       const now = Date.now();
       markDeletedStmt.run(now, slug);
 
-      // Also try to delete on mail.tm in the background
       try {
         const password = decryptPassword(row.password_encrypted);
         const tokenRes = await fetch('https://api.mail.tm/token', {
@@ -393,7 +386,7 @@ app.delete('/api/mailboxes/:slug', async (req, res) => {
           }
         }
       } catch {
-        // Ignored, row is already marked deleted
+        // Ignored
       }
     }
 
@@ -469,16 +462,35 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(__dirname, 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (_req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
+    // On Vercel, dist is in different location - handle both
+    const possibleDistPaths = [
+      path.join(__dirname, 'dist'),
+      path.join(__dirname, '..', 'dist'),
+      path.join(process.cwd(), 'dist')
+    ];
+    let distPath = possibleDistPaths[0];
+    for (const p of possibleDistPaths) {
+      if (fs.existsSync(p)) {
+        distPath = p;
+        break;
+      }
+    }
+    if (fs.existsSync(distPath)) {
+      app.use(express.static(distPath));
+      app.get('*', (_req, res) => {
+        res.sendFile(path.join(distPath, 'index.html'));
+      });
+    }
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Email Times server running at http://0.0.0.0:${PORT}`);
-  });
+  if (!isVercel) {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Email Times server running at http://0.0.0.0:${PORT}`);
+    });
+  }
 }
 
 startServer();
+
+// Export for Vercel serverless
+export default app;
