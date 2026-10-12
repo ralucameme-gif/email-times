@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>الايميل المؤقت — Email Times</title>
+    <meta name="description" content="بريد إلكتروني مؤقت يختفي في الوقت الذي تحدده (10 دقائق حتى 7 أيام). صندوق وارد فوري باللغتين العربية والإنجليزية." />
+    <meta property="og:title" content="الايميل المؤقت — Email Times" />
+    <meta property="og:description" content="بريد إلكتروني مؤقت يختفي في الوقت الذي تحدده (10 دقائق حتى 7 أيام). صندوق وارد فوري باللغتين العربية والإنجليزية." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="الايميل المؤقت — Email Times" />
+    <meta name="twitter:description" content="بريد إلكتروني مؤقت يختفي في الوقت الذي تحدده. صندوق وارد فوري ورابط خاص للمشاركة." />
+    
+    <!-- Fonts: Inter & IBM Plex Sans Arabic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+    <!-- Favicon: Envelope + Clock -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none'%3E%3Crect width='32' height='32' rx='8' fill='%234F46E5'/%3E%3Cpath d='M7 11C7 9.89543 7.89543 9 9 9H23C24.1046 9 25 9.89543 25 11V21C25 22.1046 24.1046 23 23 23H9C7.89543 23 7 22.1046 7 21V11Z' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M7 11L16 17L25 11' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='21' cy='20' r='5' fill='%2306B6D4' stroke='%234F46E5' stroke-width='1.5'/%3E%3Cpath d='M21 18V20H22.5' stroke='white' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "name": "Email Times",
+          "alternateName": "الايميل المؤقت",
+          "applicationCategory": "UtilitiesApplication",
+          "operatingSystem": "All",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "description": "Free disposable temporary email service that disappears on your schedule (10 minutes up to 7 days). Bilingual Arabic and English."
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "How does Email Times temporary email work?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Email Times generates a real, functional temporary email address using the mail.tm network. You can choose a lifetime between 10 minutes and 7 days. When the timer expires, the mailbox and all its messages are permanently deleted."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I access my inbox from another device?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes! Every created mailbox gets an unguessable private share link. You can bookmark or copy the link to return to your inbox from any browser or device until the countdown ends."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+  </head>
+  <body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 antialiased selection:bg-indigo-500/20 selection:text-indigo-600 dark:selection:text-indigo-300">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
