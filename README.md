@@ -30,6 +30,7 @@ A modern, high-performance, bilingual (Arabic & English) disposable temporary em
 - **Dark & Light Themes**: Seamlessly switches and persists user preference.
 
 ---
+fix
 
 ## Environment Variables
 
